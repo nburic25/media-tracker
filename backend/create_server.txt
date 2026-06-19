@@ -1,0 +1,5 @@
+npm init -y
+npm install express
+
+za povezivanje baze (instalacija postgre drajvera za node.js):
+npm install pg
