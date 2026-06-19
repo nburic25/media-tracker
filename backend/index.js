@@ -53,30 +53,31 @@ app.listen(3000, () => {
 // http://localhost:3000/media?type=series
 // http://localhost:3000/media?type=game
 
+// STARI /media/:id
 // vraca jedan element zavisno od toga koji je ID
-app.get("/media/:id", (req, res) => {
-    // ID iz URL-a
-    const id = req.params.id;
+// app.get("/media/:id", (req, res) => {
+//     // ID iz URL-a
+//     const id = req.params.id;
 
-    // baza
-    const media = [
-        { id: 1, title: "Inception", type: "movie" },
-        { id: 2, title: "Breaking Bad", type: "series" },
-        { id: 3, title: "The Witcher", type: "series" },
-        { id: 4, title: "GTA V", type: "game" }
-    ];
+//     // baza
+//     const media = [
+//         { id: 1, title: "Inception", type: "movie" },
+//         { id: 2, title: "Breaking Bad", type: "series" },
+//         { id: 3, title: "The Witcher", type: "series" },
+//         { id: 4, title: "GTA V", type: "game" }
+//     ];
 
-    // trazenje elementa sa odredjenim ID-em
-    const item = media.find(m => m.id == id);
+//     // trazenje elementa sa odredjenim ID-em
+//     const item = media.find(m => m.id == id);
 
-    // ako ne postoji
-    if(!item) {
-        return res.status(404).json({ message: "Media not found"});
-    }
+//     // ako ne postoji
+//     if(!item) {
+//         return res.status(404).json({ message: "Media not found"});
+//     }
 
-    // vraca pronadjeni element
-    res.json(item);
-});
+//     // vraca pronadjeni element
+//     res.json(item);
+// });
 // npr: // http://localhost:3000/media/1
 
 // provjera da li konekcija "backend-database" radi
@@ -140,6 +141,7 @@ app.get("/media", async (req, res) => {
 // http://localhost:3000/media?type=series
 // http://localhost:3000/media?type=game
 
+// vraca jedan element iz media po ID-u
 app.get("/media/:id", async (req, res) => {
     try {
         const id = req.params.id;
