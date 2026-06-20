@@ -2,6 +2,11 @@
 const express = require('express');
 // Uvoz Pool iz db.js (omogucava konekciju izmedju baze i backend-a)
 const pool = require("./db");
+
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = "tajni_kljuc_123";
+
 // Kreiranje Express aplikacije (backend server)
 const app = express();
 
@@ -159,3 +164,84 @@ app.get("/media/:id", async (req, res) => {
 });
 // http://localhost:3000/media/1
 // http://localhost:3000/media/2
+
+// dodajemo da bi mogli da saljemo podatke u body (req.body)
+app.use(express.json());
+
+app.post("/register", async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+
+        // 1. hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 2. insert u bazu
+        const result = await pool.query(
+            `INSERT INTO users (username, email, password, role_id)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id, username, email, role_id`,
+            [username, email, hashedPassword, 2]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+
+        // duplicate username/email
+        if (err.code === "23505") {
+            return res.status(400).json({
+                message: "Username ili email vec postoji"
+            });
+        }
+
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+app.post("/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // 1. uzmi usera iz baze
+        const result = await pool.query(
+            "SELECT * FROM users WHERE username = $1",
+            [username]
+        );
+
+        // 2. provjera da li user postoji
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "User ne postoji" });
+        }
+
+        const user = result.rows[0];
+
+        // 3. provjera password-a (bcrypt)
+        const isValid = await bcrypt.compare(password, user.password);
+
+        if (!isValid) {
+            return res.status(401).json({ message: "Pogresna lozinka" });
+        }
+
+        // 4. JWT token
+        const token = jwt.sign(
+            {
+                id: user.id,
+                username: user.username,
+                role_id: user.role_id
+            },
+            JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        // 5. response
+        res.json({
+            message: "Login uspjesan",
+            token
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});

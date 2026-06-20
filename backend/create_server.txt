@@ -3,3 +3,6 @@ npm install express
 
 za povezivanje baze (instalacija postgre drajvera za node.js):
 npm install pg
+
+instalacija bcrypt i jwt tokena:
+npm install bcrypt jsonwebtoken
