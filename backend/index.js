@@ -112,35 +112,35 @@ app.get("/test-db", async (req, res) => {
 // // http://localhost:3000/media
 
 // vraca sve media ili samo jedan od tipova
-app.get("/media", async (req, res) => {
-    try {
-        const type = req.query.type;
+// app.get("/media", async (req, res) => {
+//     try {
+//         const type = req.query.type;
 
-        let query = "SELECT * FROM media";
-        let values = [];
+//         let query = "SELECT * FROM media";
+//         let values = [];
 
-        if (type) {
-            query += " WHERE type_id = $1";
+//         if (type) {
+//             query += " WHERE type_id = $1";
 
-            // mapiranje (privremeno rješenje)
-            let typeId;
+//             // mapiranje (privremeno rješenje)
+//             let typeId;
 
-            if (type === "movie") typeId = 1;
-            else if (type === "series") typeId = 2;
-            else if (type === "game") typeId = 3;
+//             if (type === "movie") typeId = 1;
+//             else if (type === "series") typeId = 2;
+//             else if (type === "game") typeId = 3;
 
-            values.push(typeId);
-        }
+//             values.push(typeId);
+//         }
 
-        const result = await pool.query(query, values);
+//         const result = await pool.query(query, values);
 
-        res.json(result.rows);
+//         res.json(result.rows);
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Greska na serveru" });
-    }
-});
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: "Greska na serveru" });
+//     }
+// });
 // http://localhost:3000/media
 // http://localhost:3000/media?type=movie
 // http://localhost:3000/media?type=series
@@ -176,6 +176,7 @@ app.post("/register", async (req, res) => {
         // 1. hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const role_id = 2;
         // 2. insert u bazu
         const result = await pool.query(
             `INSERT INTO users (username, email, password, role_id)
@@ -427,19 +428,19 @@ app.post("/media", authMiddleware, adminMiddleware, async (req, res) => {
 })
 
 // READ ALL MEDIA
-app.get("/media", async (req, res) => {
-    try {
-        const result = await pool.query(
-            `SELECT * FROM media ORDER BY id DESC`
-        );
+// app.get("/media", async (req, res) => {
+//     try {
+//         const result = await pool.query(
+//             `SELECT * FROM media ORDER BY id DESC`
+//         );
 
-        res.json(result.rows);
+//         res.json(result.rows);
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Greska na serveru" });
-    }
-});
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: "Greska na serveru" });
+//     }
+// });
 
 // UPDATE MEDIA
 app.put("/media/:id", authMiddleware, adminMiddleware, async (req, res) => {
@@ -496,35 +497,232 @@ app.delete("/media/:id", authMiddleware, adminMiddleware, async (req, res) => {
     }
 });
 
+// app.get("/media", async (req, res) => {
+//     try {
+//         const { type_id, genre_id } = req.query;
+
+//         let query = `
+//             SELECT DISTINCT m.*
+//             FROM media m
+//             LEFT JOIN media_genre mg ON m.id = mg.media_id
+//             WHERE 1=1
+//         `;
+
+//         let values = [];
+//         let index = 1;
+
+//         if (type_id) {
+//             query += ` AND m.type_id = $${index}`;
+//             values.push(type_id);
+//             index++;
+//         }
+
+//         if (genre_id) {
+//             query += ` AND mg.genre_id = $${index}`;
+//             values.push(genre_id);
+//             index++;
+//         }
+
+//         const result = await pool.query(query, values);
+
+//         res.json(result.rows);
+
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: "Greska na serveru" });
+//     }
+// });
+
+// READ MEDIA (SA ILI BEZ FILTERA)
 app.get("/media", async (req, res) => {
     try {
-        const { type_id, genre_id } = req.query;
+        const { type_id, genre_id, search, release_year } = req.query;
 
         let query = `
-            SELECT DISTINCT m.*
+            SELECT m.*
             FROM media m
-            LEFT JOIN media_genre mg ON m.id = mg.media_id
-            WHERE 1=1
         `;
 
         let values = [];
+        let conditions = [];
         let index = 1;
 
-        if (type_id) {
-            query += ` AND m.type_id = $${index}`;
-            values.push(type_id);
-            index++;
-        }
-
         if (genre_id) {
-            query += ` AND mg.genre_id = $${index}`;
+            query += ` JOIN media_genre mg ON m.id = mg.media_id`;
+            conditions.push(`mg.genre_id = $${index}`);
             values.push(genre_id);
             index++;
         }
 
+        if (type_id) {
+            conditions.push(`m.type_id = $${index}`);
+            values.push(type_id);
+            index++;
+        }
+
+        if (search) {
+            conditions.push(`m.title ILIKE $${index}`);
+            values.push(`%${search}%`);
+            index++;
+        }
+
+        if (release_year) {
+            conditions.push(`m.release_year = $${index}`);
+            values.push(release_year);
+            index++;
+}
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        query += " ORDER BY m.id DESC";
+
         const result = await pool.query(query, values);
 
         res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// ADD GENRE TO MEDIA
+app.post("/media/:id/genre", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const media_id = req.params.id;
+        const { genre_id } = req.body;
+
+        const result = await pool.query(
+            `
+            INSERT INTO media_genre (media_id, genre_id)
+            VALUES ($1, $2)
+            RETURNING *
+            `,
+            [media_id, genre_id]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// REMOVE GENRE
+app.delete("/media/:id/genre/:genre_id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { id, genre_id } = req.params;
+
+        const result = await pool.query(
+            `
+            DELETE FROM media_genre
+            WHERE media_id = $1 AND genre_id = $2
+            RETURNING *
+            `,
+            [id, genre_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Veza ne postoji" });
+        }
+
+        res.json({
+            message: "Genre uklonjen",
+            deleted: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// ADD COMENT
+app.post("/comments", authMiddleware, async (req, res) => {
+    try {
+        const user_id = req.user.id;
+        const { media_id, content } = req.body;
+
+        if (!content || content.trim() === "") {
+            return res.status(400).json({ message: "Komentar je obavezan" });
+        }
+
+        const result = await pool.query(
+            `
+            INSERT INTO comments (user_id, media_id, content)
+            VALUES ($1, $2, $3)
+            RETURNING *
+            `,
+            [user_id, media_id, content]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// GET COMMENTS BY MEDIA
+app.get("/comments/:media_id", async (req, res) => {
+    try {
+        const { media_id } = req.params;
+
+        const result = await pool.query(
+            `
+            SELECT c.id, c.content, c.created_at, u.username
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.media_id = $1
+            ORDER BY c.created_at DESC
+            `,
+            [media_id]
+        );
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// DELETE COMMENT
+app.delete("/comments/:id", authMiddleware, async (req, res) => {
+    try {
+        const comment_id = req.params.id;
+        const user_id = req.user.id;
+        const user_role = req.user.role_id;
+
+        // 1. pronadji komentar
+        const comment = await pool.query(
+            `SELECT * FROM comments WHERE id = $1`,
+            [comment_id]
+        );
+
+        if (comment.rows.length === 0) {
+            return res.status(404).json({ message: "Komentar ne postoji" });
+        }
+
+        // 2. provjera: owner ili admin
+        if (comment.rows[0].user_id !== user_id && user_role !== 1) {
+            return res.status(403).json({ message: "Nemate dozvolu" });
+        }
+
+        // 3. brisanje
+        const result = await pool.query(
+            `DELETE FROM comments WHERE id = $1 RETURNING *`,
+            [comment_id]
+        );
+
+        res.json({
+            message: "Komentar obrisan",
+            deleted: result.rows[0]
+        });
 
     } catch (err) {
         console.error(err);
