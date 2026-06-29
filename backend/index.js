@@ -168,6 +168,7 @@ app.get("/media/:id", async (req, res) => {
 // dodajemo da bi mogli da saljemo podatke u body (req.body)
 app.use(express.json());
 
+// register
 app.post("/register", async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -199,6 +200,7 @@ app.post("/register", async (req, res) => {
     }
 });
 
+// login
 app.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -239,6 +241,290 @@ app.post("/login", async (req, res) => {
             message: "Login uspjesan",
             token
         });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// JWT middleware
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers["authorization"];
+
+    if (!authHeader) {
+        return res.status(401).json({ message: "Nema tokena" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded; // dodajemo usera u request
+        next();
+    } catch (err) {
+        return res.status(403).json({ message: "Nevalidan token" });
+    }
+}
+
+// Admin middleware
+const adminMiddleware = (req, res, next) => {
+    if (req.user.role_id !== 1) {
+        return res.status(403).json({
+            message: "Samo admin moze ovo"
+        });
+    }
+    next();
+};
+
+// protected route
+app.get("/profile", authMiddleware, (req, res) => {
+    res.json({
+        message: "Ovo je protected ruta",
+        user: req.user
+    });
+});
+
+// CREATE USER-MEDIA
+app.post("/user-media", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { media_id, status_id, rating } = req.body;
+
+        const result = await pool.query(
+            `INSERT INTO user_media (user_id, media_id, status_id, rating)
+             VALUES ($1, $2, $3, $4)
+             RETURNING *`,
+            [userId, media_id, status_id, rating]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+
+        if (err.code === "23505") {
+            return res.status(400).json({
+                message: "Vec si dodao ovaj media"
+            });
+        }
+
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// READ USER-MEDIA
+app.get("/user-media", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await pool.query(
+            `
+            SELECT 
+                um.id,
+                um.rating,
+                m.title,
+                m.id AS media_id,
+                s.name AS status
+            FROM user_media um
+            JOIN media m ON um.media_id = m.id
+            JOIN user_media_status s ON um.status_id = s.id
+            WHERE um.user_id = $1
+            `,
+            [userId]
+        );
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// UPDATE USER-MEDIA
+app.put("/user-media/:id", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userMediaId = req.params.id;
+        const { status_id, rating } = req.body;
+
+        const result = await pool.query(
+            `
+            UPDATE user_media
+            SET status_id = COALESCE($1, status_id),
+                rating = COALESCE($2, rating)
+            WHERE id = $3 AND user_id = $4
+            RETURNING *
+            `,
+            [status_id, rating, userMediaId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Ne postoji zapis" });
+        }
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// DELETE USER-MEDIA
+app.delete("/user-media/:id", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userMediaId = req.params.id;
+
+        const result = await pool.query(
+            `
+            DELETE FROM user_media
+            WHERE id = $1 AND user_id = $2
+            RETURNING *
+            `,
+            [userMediaId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Ne postoji zapis ili nije tvoj"
+            });
+        }
+
+        res.json({
+            message: "Uspjesno obrisano",
+            deleted: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// CREATE MEDIA
+app.post("/media", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { title, type_id, description, release_year, image, video_url } = req.body;
+
+        const result = await pool.query(
+            `
+            INSERT INTO media (title, type_id, description, release_year, image, video_url)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            `,
+            [title, type_id, description, release_year, image, video_url]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+})
+
+// READ ALL MEDIA
+app.get("/media", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT * FROM media ORDER BY id DESC`
+        );
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// UPDATE MEDIA
+app.put("/media/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, release_year } = req.body;
+
+        const result = await pool.query(
+            `
+            UPDATE media
+            SET title = COALESCE($1, title),
+                description = COALESCE($2, description),
+                release_year = COALESCE($3, release_year)
+            WHERE id = $4
+            RETURNING *
+            `,
+            [title, description, release_year, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Media ne postoji" });
+        }
+
+        res.json(result.rows[0]);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+// DELETE MEDIA
+app.delete("/media/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(
+            `DELETE FROM media WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Media ne postoji" });
+        }
+
+        res.json({
+            message: "Media obrisan",
+            deleted: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Greska na serveru" });
+    }
+});
+
+app.get("/media", async (req, res) => {
+    try {
+        const { type_id, genre_id } = req.query;
+
+        let query = `
+            SELECT DISTINCT m.*
+            FROM media m
+            LEFT JOIN media_genre mg ON m.id = mg.media_id
+            WHERE 1=1
+        `;
+
+        let values = [];
+        let index = 1;
+
+        if (type_id) {
+            query += ` AND m.type_id = $${index}`;
+            values.push(type_id);
+            index++;
+        }
+
+        if (genre_id) {
+            query += ` AND mg.genre_id = $${index}`;
+            values.push(genre_id);
+            index++;
+        }
+
+        const result = await pool.query(query, values);
+
+        res.json(result.rows);
 
     } catch (err) {
         console.error(err);
