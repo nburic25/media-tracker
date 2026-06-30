@@ -187,7 +187,7 @@ app.post("/register", async (req, res) => {
             `INSERT INTO users (username, email, password, role_id)
              VALUES ($1, $2, $3, $4)
              RETURNING id, username, email, role_id`,
-            [username, email, hashedPassword, 2]
+            [username, email, hashedPassword, role_id]
         );
 
         res.json(result.rows[0]);
@@ -322,30 +322,36 @@ app.post("/user-media", authMiddleware, async (req, res) => {
 // READ USER-MEDIA
 app.get("/user-media", authMiddleware, async (req, res) => {
     try {
-        const userId = req.user.id;
+    const userId = req.user.id;
 
-        const result = await pool.query(
-            `
-            SELECT 
-                um.id,
-                um.rating,
-                m.title,
-                m.id AS media_id,
-                s.name AS status
-            FROM user_media um
-            JOIN media m ON um.media_id = m.id
-            JOIN user_media_status s ON um.status_id = s.id
-            WHERE um.user_id = $1
-            `,
-            [userId]
-        );
+    const result = await pool.query(
+      `
+    SELECT 
+        um.id,
+        um.rating,
+        um.status_id,
+        um.media_id,
+        m.title,
+        COALESCE(m.image, '') AS image,
+        m.release_year,
+        s.name AS status
+    FROM user_media um
+    JOIN media m ON um.media_id = m.id
+    JOIN user_media_status s ON um.status_id = s.id
+    WHERE um.user_id = $1
+      `,
+      [userId]
+    );
 
-        res.json(result.rows);
+    console.log("ROWS:", result.rows);
+    console.log(result.rows[0]);
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Greska na serveru" });
-    }
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Greska na serveru" });
+  }
 });
 
 // UPDATE USER-MEDIA
@@ -733,4 +739,27 @@ app.delete("/comments/:id", authMiddleware, async (req, res) => {
         console.error(err);
         res.status(500).json({ message: "Greska na serveru" });
     }
+});
+
+// GET AVERAGE RATING
+app.get("/media/:id/rating", async (req, res) => {
+  try {
+    const mediaId = req.params.id;
+
+    const result = await pool.query(
+      `
+      SELECT 
+        COALESCE(AVG(rating), 0) AS avg_rating,
+        COUNT(rating) AS total_ratings
+      FROM user_media
+      WHERE media_id = $1 AND rating IS NOT NULL
+      `,
+      [mediaId]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Greska na serveru" });
+  }
 });
