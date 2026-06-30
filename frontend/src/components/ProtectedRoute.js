@@ -5,13 +5,14 @@ import { Navigate } from "react-router-dom";
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useContext(AuthContext);
 
-  // ❌ nije ulogovan
+  console.log("USER:", user);
+
   if (!user) {
     return <Navigate to="/login" />;
   }
 
-  // 🔒 admin-only ruta
-  if (adminOnly && user.role_id !== 1) {
+  // 🔥 FIX
+  if (adminOnly && Number(user.role_id) !== 1) {
     return <Navigate to="/" />;
   }
 

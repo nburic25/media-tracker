@@ -8,6 +8,7 @@ import MediaList from "./MediaList";
 import MediaDetails from "./MediaDetails";
 import MyList from "./pages/MyList";
 import AdminPanel from "./pages/AdminPanel"; // 🔥 DODANO
+import AdvancedSearch from "./pages/AdvancedSearch";
 
 function App() {
   return (
@@ -41,6 +42,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/advanced-search" element={<AdvancedSearch />} />
       </Routes>
     </Router>
   );
