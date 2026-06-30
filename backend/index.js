@@ -2,6 +2,8 @@
 const express = require('express');
 // Uvoz Pool iz db.js (omogucava konekciju izmedju baze i backend-a)
 const pool = require("./db");
+// backend - frontend
+const cors = require("cors");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -9,6 +11,9 @@ const JWT_SECRET = "tajni_kljuc_123";
 
 // Kreiranje Express aplikacije (backend server)
 const app = express();
+
+app.use(cors());
+app.use(express.json());
 
 // Kada neko ode na homepage
 app.get("/", (req, res) => {
