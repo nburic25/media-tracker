@@ -6,9 +6,9 @@ function MediaList() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🔍 GET SEARCH PARAM
   const params = new URLSearchParams(location.search);
   const search = params.get("search") || "";
+  const type = params.get("type") || "";
 
   useEffect(() => {
     fetch("http://localhost:3000/media")
@@ -24,34 +24,58 @@ function MediaList() {
     return "Unknown";
   };
 
-  // 🔥 FILTER
-  const filteredMedia = media.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMedia = media.filter((item) => {
+    const matchesSearch = item.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesType = type ? item.type_id === Number(type) : true;
+
+    return matchesSearch && matchesType;
+  });
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Media List</h1>
+    <div style={{ padding: "30px", maxWidth: "1200px", margin: "0 auto" }}>
+      <h1 style={{ marginBottom: "10px" }}>Media List</h1>
 
-      {/* 🔍 SEARCH INFO */}
-      {search && <p>Results for: "{search}"</p>}
+      {search && <p style={{ opacity: 0.7 }}>Search: "{search}"</p>}
+      {type && (
+        <p style={{ opacity: 0.7 }}>
+          Filter: {getTypeName(Number(type))}
+        </p>
+      )}
 
-      {/* ❌ NO RESULTS */}
       {filteredMedia.length === 0 ? (
-        <p>No results found</p>
+        <p style={{ marginTop: "20px" }}>No results found</p>
       ) : (
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(200px, 1fr))",
+            gap: "20px",
+            marginTop: "20px",
+          }}
+        >
           {filteredMedia.map((item) => (
             <div
               key={item.id}
               onClick={() => navigate(`/media/${item.id}`)}
+              // className="media-card"
               style={{
-                border: "1px solid #ccc",
+                backgroundColor: "#212121",
                 borderRadius: "10px",
                 overflow: "hidden",
-                width: "220px",
                 cursor: "pointer",
+                transition: "0.2s",
+                boxShadow: "0 4px 10px rgba(94, 93, 93, 0.5)",
               }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.transform = "scale(1.03)")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
             >
               <img
                 src={item.image}
@@ -61,14 +85,17 @@ function MediaList() {
                 }}
                 style={{
                   width: "100%",
-                  height: "300px",
+                  height: "280px",
                   objectFit: "cover",
                 }}
               />
 
               <div style={{ padding: "10px" }}>
-                <h3>{item.title}</h3>
-                <p style={{ color: "gray" }}>
+              {/* <div className="media-card-content"> */}
+                {/* <h3 className="media-card-title">{item.title}</h3> */}
+                <h3 style={{ margin: "5px 0" }}>{item.title}</h3>
+                {/* <p className="media-card-sub"> */}
+                <p style={{ color: "#aaa", fontSize: "13px" }}>
                   {getTypeName(item.type_id)} • {item.release_year}
                 </p>
               </div>
