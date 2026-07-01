@@ -2,7 +2,7 @@ import { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
 
-// 🔥 helper za dekodiranje JWT
+// helper za dekodiranje JWT
 function parseJwt(token) {
   try {
     const base64 = token.split(".")[1];
@@ -17,11 +17,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
-  // 🔥 kada se app učita
+  // kada se app učita
   useEffect(() => {
     if (token) {
       const decoded = parseJwt(token);
-      setUser(decoded); // ✅ sad ima role_id
+      setUser(decoded); //
     }
   }, [token]);
 
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     setToken(token);
 
     const decoded = parseJwt(token);
-    setUser(decoded); // ✅ ovdje isto
+    setUser(decoded);
   };
 
   const logout = () => {

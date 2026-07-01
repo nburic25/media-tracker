@@ -11,7 +11,6 @@ function ProtectedRoute({ children, adminOnly = false }) {
     return <Navigate to="/login" />;
   }
 
-  // 🔥 FIX
   if (adminOnly && Number(user.role_id) !== 1) {
     return <Navigate to="/" />;
   }

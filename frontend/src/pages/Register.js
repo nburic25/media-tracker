@@ -13,7 +13,7 @@ function Register() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // 🔁 ako je već logovan → redirect
+  // ako je već logovan → redirect
   useEffect(() => {
     if (user) {
       navigate("/");

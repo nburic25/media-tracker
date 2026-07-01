@@ -7,7 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import MediaList from "./MediaList";
 import MediaDetails from "./MediaDetails";
 import MyList from "./pages/MyList";
-import AdminPanel from "./pages/AdminPanel"; // 🔥 DODANO
+import AdminPanel from "./pages/AdminPanel"; // DODANO
 import AdvancedSearch from "./pages/AdvancedSearch";
 
 function App() {
@@ -33,7 +33,7 @@ function App() {
           }
         />
 
-        {/* 🔥 ADMIN PROTECTED */}
+        {/* ADMIN PROTECTED */}
         <Route
           path="/admin"
           element={

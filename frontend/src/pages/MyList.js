@@ -26,7 +26,7 @@ function MyList() {
     .then((data) => {
       console.log("API RESPONSE:", data);
 
-      // ✅ SIGURNOSNA PROVJERA
+      // SIGURNOSNA PROVJERA
       if (Array.isArray(data)) {
         setItems(data);
       } else {

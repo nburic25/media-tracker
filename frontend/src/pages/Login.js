@@ -5,12 +5,12 @@ import { useNavigate } from "react-router-dom";
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); // ✅ DODANO
+  const [error, setError] = useState(""); //
 
   const { login, user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // 🔁 ako je već logovan → redirect
+  //  ako je već logovan -> redirect
   useEffect(() => {
     if (user) {
       navigate("/");

@@ -15,7 +15,7 @@ function AdminPanel() {
   const [mediaList, setMediaList] = useState([]);
   const [editId, setEditId] = useState(null);
 
-  // 🔄 LOAD MEDIA
+  // LOAD MEDIA
   useEffect(() => {
     fetch("http://localhost:3000/media")
       .then((res) => res.json())
@@ -31,7 +31,7 @@ function AdminPanel() {
     });
   };
 
-  // ➕ CREATE / ✏️ EDIT
+  // CREATE / EDIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -88,7 +88,7 @@ function AdminPanel() {
     }
   };
 
-  // 🗑 DELETE
+  // DELETE
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this media?")) return;
 
@@ -106,7 +106,7 @@ function AdminPanel() {
     }
   };
 
-  // ✏️ EDIT CLICK
+  // EDIT
   const handleEdit = (item) => {
     setEditId(item.id);
 
